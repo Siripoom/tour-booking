@@ -85,11 +85,11 @@ export default function BookingForm() {
 
       const tours = tourSnap.docs.map((doc) => ({
         id: doc.id,
-        ...(doc.data() as TourType),
+        ...(doc.data() as Omit<TourType, "id">),
       }));
       const locs = locationSnap.docs.map((doc) => ({
         id: doc.id,
-        ...(doc.data() as Location),
+        ...(doc.data() as Omit<Location, "id">),
       }));
 
       const nextTours = tours.length ? tours : TOUR_TYPES;

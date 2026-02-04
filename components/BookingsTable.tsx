@@ -91,11 +91,11 @@ export default function BookingsTable() {
 
       const tours = tourSnap.docs.map((doc) => ({
         id: doc.id,
-        ...(doc.data() as TourType),
+        ...(doc.data() as Omit<TourType, "id">),
       }));
       const locs = locationSnap.docs.map((doc) => ({
         id: doc.id,
-        ...(doc.data() as Location),
+        ...(doc.data() as Omit<Location, "id">),
       }));
 
       if (tours.length) {

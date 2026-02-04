@@ -14,7 +14,7 @@ export default function HighlightsSection() {
       const snap = await getDocs(collection(db, "locations"));
       const locs = snap.docs.map((doc) => ({
         id: doc.id,
-        ...(doc.data() as Location),
+        ...(doc.data() as Omit<Location, "id">),
       }));
       if (locs.length) {
         setLocations(locs);
