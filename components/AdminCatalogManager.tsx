@@ -53,14 +53,16 @@ export default function AdminCatalogManager() {
         getDocs(collection(db, "locations")),
       ]);
 
-      const tours = tourSnap.docs.map((doc) => ({
-        id: doc.id,
-        ...(doc.data() as TourType),
-      }));
-      const locs = locationSnap.docs.map((doc) => ({
-        id: doc.id,
-        ...(doc.data() as Location),
-      }));
+      const tours = tourSnap.docs.map((doc) => {
+        const data = doc.data() as TourType;
+        const { id: _ignored, ...rest } = data;
+        return { id: doc.id, ...rest };
+      });
+      const locs = locationSnap.docs.map((doc) => {
+        const data = doc.data() as Location;
+        const { id: _ignored, ...rest } = data;
+        return { id: doc.id, ...rest };
+      });
 
       setTourTypes(tours.length ? tours : TOUR_TYPES.map((t) => ({ ...t })));
       setLocations(locs.length ? locs : LOCATIONS.map((l) => ({ ...l })));
@@ -78,14 +80,16 @@ export default function AdminCatalogManager() {
       getDocs(collection(db, "locations")),
     ]);
 
-    const tours = tourSnap.docs.map((doc) => ({
-      id: doc.id,
-      ...(doc.data() as TourType),
-    }));
-    const locs = locationSnap.docs.map((doc) => ({
-      id: doc.id,
-      ...(doc.data() as Location),
-    }));
+    const tours = tourSnap.docs.map((doc) => {
+      const data = doc.data() as TourType;
+      const { id: _ignored, ...rest } = data;
+      return { id: doc.id, ...rest };
+    });
+    const locs = locationSnap.docs.map((doc) => {
+      const data = doc.data() as Location;
+      const { id: _ignored, ...rest } = data;
+      return { id: doc.id, ...rest };
+    });
 
     setTourTypes(tours.length ? tours : TOUR_TYPES.map((t) => ({ ...t })));
     setLocations(locs.length ? locs : LOCATIONS.map((l) => ({ ...l })));
