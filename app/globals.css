@@ -2,18 +2,23 @@
 
 :root {
   --sand: #fff7ed;
-  --ocean: #0ea5e9;
-  --emerald: #10b981;
+  --lagoon: #06b6d4;
+  --lagoon-deep: #0891b2;
   --coral: #fb7185;
-  --ink: #0f172a;
-  --muted: #475569;
-  --card: rgba(255, 255, 255, 0.8);
+  --sun: #facc15;
+  --sunset: #f97316;
+  --ink: #0b1020;
+  --muted: #4b5563;
+  --card: rgba(255, 255, 255, 0.82);
+  --card-strong: rgba(255, 255, 255, 0.92);
+  --glow: rgba(251, 113, 133, 0.35);
 }
 
 @theme inline {
   --color-background: var(--sand);
   --color-foreground: var(--ink);
   --font-sans: var(--font-sans);
+  --font-display: var(--font-display);
 }
 
 body {
@@ -26,17 +31,7 @@ body {
 .page-shell {
   position: relative;
   overflow: hidden;
-  background: radial-gradient(
-      circle at top,
-      rgba(16, 185, 129, 0.18),
-      transparent 55%
-    ),
-    radial-gradient(
-      circle at 80% 20%,
-      rgba(14, 165, 233, 0.18),
-      transparent 45%
-    ),
-    linear-gradient(160deg, #fff7ed 0%, #f1f5f9 40%, #fef2f2 100%);
+  background: linear-gradient(160deg, #f8fafc 0%, #ffffff 60%, #f1f5f9 100%);
 }
 
 .page-shell::before {
@@ -44,12 +39,86 @@ body {
   position: absolute;
   inset: 0;
   background-image: radial-gradient(
-    rgba(15, 23, 42, 0.08) 1px,
+    rgba(15, 23, 42, 0.06) 1px,
     transparent 1px
   );
-  background-size: 32px 32px;
-  opacity: 0.25;
+  background-size: 36px 36px;
+  opacity: 0.2;
   pointer-events: none;
+}
+
+.page-shell--public {
+  position: relative;
+  overflow: hidden;
+  background: radial-gradient(
+      circle at 20% 10%,
+      rgba(250, 204, 21, 0.25),
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 80% 15%,
+      rgba(251, 113, 133, 0.25),
+      transparent 45%
+    ),
+    radial-gradient(
+      circle at 30% 80%,
+      rgba(6, 182, 212, 0.3),
+      transparent 55%
+    ),
+    linear-gradient(160deg, #fff4e6 0%, #fff 45%, #ecfeff 100%);
+}
+
+.page-shell--public::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(
+    rgba(11, 16, 32, 0.08) 1px,
+    transparent 1px
+  );
+  background-size: 28px 28px;
+  opacity: 0.2;
+  pointer-events: none;
+}
+
+.page-shell--public::after {
+  content: "";
+  position: absolute;
+  inset: -10% 0 0 0;
+  background: conic-gradient(
+    from 120deg at 30% 20%,
+    rgba(6, 182, 212, 0.25),
+    rgba(251, 113, 133, 0.18),
+    rgba(250, 204, 21, 0.22),
+    transparent 60%
+  );
+  filter: blur(50px);
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.text-display {
+  font-family: var(--font-display), var(--font-sans), sans-serif;
+}
+
+.glass-card {
+  background: var(--card);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 30px 80px -60px rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(14px);
+}
+
+.glow-ring {
+  box-shadow: 0 0 0 2px rgba(251, 113, 133, 0.25),
+    0 0 24px rgba(251, 113, 133, 0.35);
+}
+
+.float-slow {
+  animation: float 8s ease-in-out infinite;
+}
+
+.fade-up {
+  animation: fade-up 0.8s ease-out both;
 }
 
 @keyframes float {

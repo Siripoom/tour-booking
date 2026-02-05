@@ -8,12 +8,12 @@ type PriceSummaryProps = {
 
 export default function PriceSummary({ breakdown }: PriceSummaryProps) {
   return (
-    <div className="sticky top-6 rounded-3xl border border-white/60 bg-white/80 p-6 shadow-[0_30px_80px_-60px_rgba(15,23,42,0.6)] backdrop-blur">
+    <div className="sticky top-6 rounded-3xl border border-white/70 bg-white/85 p-6 shadow-[0_30px_80px_-60px_rgba(15,23,42,0.5)] backdrop-blur">
       <div className="mb-4">
-        <p className="text-xs uppercase tracking-[0.3em] text-emerald-600">
+        <p className="text-xs uppercase tracking-[0.3em] text-cyan-600">
           Price
         </p>
-        <h3 className="mt-2 text-2xl font-semibold text-slate-900">
+        <h3 className="text-display mt-2 text-2xl font-semibold text-slate-900">
           Price Summary
         </h3>
       </div>

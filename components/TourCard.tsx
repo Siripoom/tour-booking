@@ -15,8 +15,8 @@ export default function TourCard({ location }: TourCardProps) {
   );
 
   return (
-    <div className="group relative overflow-hidden rounded-3xl border border-white/70 bg-white/70 shadow-[0_30px_60px_-50px_rgba(15,23,42,0.55)]">
-      <div className="relative h-48 bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.35),_transparent_65%)]">
+    <div className="group relative overflow-hidden rounded-3xl border border-white/80 bg-white/80 shadow-[0_30px_60px_-50px_rgba(15,23,42,0.45)] transition hover:-translate-y-1 hover:shadow-[0_35px_70px_-45px_rgba(251,113,133,0.45)]">
+      <div className="relative h-48 bg-[radial-gradient(circle_at_top,_rgba(6,182,212,0.35),_transparent_65%)]">
         {imageUrl ? (
           <img
             src={imageUrl}
@@ -27,18 +27,19 @@ export default function TourCard({ location }: TourCardProps) {
             }}
           />
         ) : null}
+        <div className="absolute inset-0 bg-gradient-to-t from-white/70 via-transparent to-transparent" />
       </div>
       <div className="p-5">
-        <p className="text-xs uppercase tracking-[0.3em] text-emerald-500">
+        <p className="text-xs uppercase tracking-[0.3em] text-cyan-600">
           {location.areaEn}
         </p>
-        <h3 className="mt-2 text-xl font-semibold text-slate-900">
+        <h3 className="text-display mt-2 text-xl font-semibold text-slate-900">
           {location.nameEn}
         </h3>
         <ul className="mt-4 space-y-2 text-sm text-slate-600">
           {(location.highlights ?? []).map((item) => (
             <li key={item} className="flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
               {item}
             </li>
           ))}

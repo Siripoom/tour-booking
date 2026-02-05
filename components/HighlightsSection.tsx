@@ -31,10 +31,10 @@ export default function HighlightsSection() {
     <section id="highlights" className="mx-auto w-full max-w-6xl px-6 pb-16">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.3em] text-emerald-600">
+          <p className="text-xs uppercase tracking-[0.3em] text-cyan-600">
             Highlights
           </p>
-          <h2 className="mt-2 text-3xl font-semibold text-slate-900">
+          <h2 className="text-display mt-2 text-3xl font-semibold text-slate-900">
             Most loved destinations
           </h2>
         </div>

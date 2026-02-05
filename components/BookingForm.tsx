@@ -38,8 +38,8 @@ function LocationCard({ location, isSelected, onSelect }: LocationCardProps) {
       onClick={onSelect}
       className={`group overflow-hidden rounded-2xl border text-left transition ${
         isSelected
-          ? "border-emerald-400 bg-emerald-50/60"
-          : "border-slate-200 bg-white/70 hover:border-emerald-200"
+          ? "border-cyan-400 bg-cyan-50/70 shadow-[0_18px_40px_-24px_rgba(6,182,212,0.6)]"
+          : "border-slate-200 bg-white/80 hover:border-cyan-200 hover:shadow-[0_16px_35px_-25px_rgba(251,113,133,0.35)]"
       }`}
     >
       <div className="relative h-36 bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.25),_transparent_65%)]">
@@ -53,10 +53,11 @@ function LocationCard({ location, isSelected, onSelect }: LocationCardProps) {
           />
         ) : null}
         {showFallback ? (
-          <div className="absolute inset-0 flex items-center justify-center text-xs uppercase tracking-[0.3em] text-slate-300">
+          <div className="absolute inset-0 z-10 flex items-center justify-center text-xs uppercase tracking-[0.3em] text-slate-300">
             No image
           </div>
         ) : null}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-white/70 via-transparent to-transparent opacity-80" />
       </div>
       <div className="space-y-1 p-4">
         <p className="text-sm font-semibold text-slate-900">
@@ -113,7 +114,7 @@ const defaultState: FormState = {
 };
 
 const inputClass =
-  "w-full rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200";
+  "w-full rounded-2xl border border-slate-200 bg-white/85 px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200";
 
 export default function BookingForm() {
   const [formData, setFormData] = useState<FormState>(defaultState);
@@ -282,19 +283,19 @@ export default function BookingForm() {
     <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
       <form
         onSubmit={handleSubmit}
-        className="rounded-3xl border border-white/70 bg-white/75 p-6 shadow-[0_30px_80px_-60px_rgba(15,23,42,0.6)] backdrop-blur"
+        className="glass-card rounded-3xl border border-white/80 bg-white/80 p-6 shadow-[0_30px_80px_-60px_rgba(15,23,42,0.4)]"
       >
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-xs uppercase tracking-[0.3em] text-emerald-600">
+            <p className="text-xs uppercase tracking-[0.3em] text-cyan-600">
               Booking
             </p>
-            <h2 className="mt-2 text-3xl font-semibold text-slate-900">
+            <h2 className="text-display mt-2 text-3xl font-semibold text-slate-900">
               Book Your Tour
             </h2>
           </div>
-          <div className="flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700">
-            <span className="h-2 w-2 rounded-full bg-emerald-400" />
+          <div className="flex items-center gap-2 rounded-full border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs font-medium text-cyan-700">
+            <span className="h-2 w-2 rounded-full bg-amber-400" />
             Premium care
           </div>
         </div>
@@ -357,8 +358,8 @@ export default function BookingForm() {
                 }
                 className={`rounded-2xl border px-4 py-3 text-left transition ${
                   formData.duration === value
-                    ? "border-emerald-400 bg-emerald-50 text-emerald-700"
-                    : "border-slate-200 bg-white/70 text-slate-600 hover:border-emerald-200"
+                    ? "border-cyan-400 bg-cyan-50 text-cyan-700"
+                    : "border-slate-200 bg-white/70 text-slate-600 hover:border-cyan-200"
                 }`}
               >
                 <p className="text-sm font-semibold">
@@ -422,10 +423,10 @@ export default function BookingForm() {
           )}
         </div>
 
-        <div className="mt-4 grid gap-3 rounded-3xl border border-slate-200/60 bg-white/70 p-4 text-sm text-slate-600">
+        <div className="mt-4 grid gap-3 rounded-3xl border border-cyan-100/80 bg-white/80 p-4 text-sm text-slate-600 shadow-[0_12px_30px_-24px_rgba(6,182,212,0.45)]">
           {selectedTourType ? (
             <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-emerald-500">
+              <p className="text-xs uppercase tracking-[0.2em] text-cyan-500">
                 Tour type details
               </p>
               <p className="mt-1 text-slate-900">
@@ -435,7 +436,7 @@ export default function BookingForm() {
           ) : null}
           {selectedLocation ? (
             <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-emerald-500">
+              <p className="text-xs uppercase tracking-[0.2em] text-cyan-500">
                 Location details
               </p>
               <p className="mt-1 text-slate-900">
@@ -463,7 +464,7 @@ export default function BookingForm() {
               >
                 <input
                   type="checkbox"
-                  className="h-4 w-4 rounded border-slate-300 text-emerald-500 focus:ring-emerald-400"
+                  className="h-4 w-4 rounded border-slate-300 text-cyan-500 focus:ring-cyan-400"
                   checked={formData.addons[key]}
                   onChange={(event) =>
                     setFormData((prev) => ({
@@ -531,7 +532,7 @@ export default function BookingForm() {
           <div
             className={`mt-4 rounded-2xl border px-4 py-3 text-sm ${
               status === "success"
-                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                ? "border-cyan-200 bg-cyan-50 text-cyan-700"
                 : "border-rose-200 bg-rose-50 text-rose-700"
             }`}
           >
@@ -551,7 +552,7 @@ export default function BookingForm() {
           <button
             type="submit"
             disabled={status === "submitting"}
-            className="rounded-full bg-emerald-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-200 transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:bg-emerald-300"
+            className="rounded-full bg-gradient-to-r from-cyan-500 via-sky-500 to-emerald-400 px-6 py-3 text-sm font-semibold text-white shadow-[0_18px_40px_-20px_rgba(14,165,233,0.8)] transition hover:translate-y-[-1px] hover:shadow-[0_20px_45px_-18px_rgba(16,185,129,0.85)] disabled:cursor-not-allowed disabled:opacity-70"
           >
             {status === "submitting"
               ? "Sending..."
