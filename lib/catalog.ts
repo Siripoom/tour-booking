@@ -1,3 +1,5 @@
+import { Duration } from "@/lib/pricing";
+
 export type TourType = {
   id: string;
   labelTh: string;
@@ -14,28 +16,32 @@ export type Location = {
   areaEn: string;
   imagePath: string;
   highlights: string[];
+  descriptionTh: string;
+  descriptionEn: string;
+  tourTypeIds: string[];
+  availableDurations: Duration[];
 };
 
 export const TOUR_TYPES: TourType[] = [
   {
     id: "islands",
-    labelTh: "เกาะและทะเล",
+    labelTh: "Islands & Sea",
     labelEn: "Islands & Sea",
-    descriptionTh: "ล่องเรือ ชมอ่าว น้ำใส หาดทรายขาว",
+    descriptionTh: "Boat rides, clear bays, and white sand beaches.",
     descriptionEn: "Boat rides, clear bays, and white sand beaches.",
   },
   {
     id: "heritage",
-    labelTh: "วัฒนธรรมและเมืองเก่า",
+    labelTh: "Heritage & Old Town",
     labelEn: "Heritage & Old Town",
-    descriptionTh: "เดินชมย่านเก่า คาเฟ่ และชุมชนท้องถิ่น",
+    descriptionTh: "Walkable old town, cafés, and local communities.",
     descriptionEn: "Walkable old town, cafés, and local communities.",
   },
   {
     id: "adventure",
-    labelTh: "ผจญภัยและธรรมชาติ",
+    labelTh: "Adventure & Nature",
     labelEn: "Adventure & Nature",
-    descriptionTh: "น้ำตก เส้นทางเขา และมุมมองพาโนรามา",
+    descriptionTh: "Waterfalls, forest trails, and panoramic viewpoints.",
     descriptionEn: "Waterfalls, forest trails, and panoramic viewpoints.",
   },
 ];
@@ -43,53 +49,102 @@ export const TOUR_TYPES: TourType[] = [
 export const LOCATIONS: Location[] = [
   {
     id: "phuket-cove",
-    nameTh: "อ่าวสวรรค์ ภูเก็ต",
+    nameTh: "Paradise Cove, Phuket",
     nameEn: "Paradise Cove, Phuket",
-    areaTh: "ทะเลอันดามัน",
+    areaTh: "Andaman Sea",
     areaEn: "Andaman Sea",
     imagePath: "phuket-cove.jpg",
     highlights: ["Snorkeling", "Hidden beach", "Sunset cruise"],
+    descriptionTh: "A private cove with clear water, perfect for a relaxed getaway.",
+    descriptionEn: "A private cove with clear water, perfect for a relaxed getaway.",
+    tourTypeIds: ["islands", "adventure"],
+    availableDurations: ["full", "half"],
   },
   {
     id: "chiang-mai",
-    nameTh: "ดอยสูง เชียงใหม่",
+    nameTh: "Highland Chiang Mai",
     nameEn: "Highland Chiang Mai",
-    areaTh: "ภาคเหนือ",
+    areaTh: "Northern Thailand",
     areaEn: "Northern Thailand",
     imagePath: "chiang-mai-highland.jpg",
     highlights: ["Misty mornings", "Hill tribe market", "Tea tasting"],
+    descriptionTh: "Nature-focused escape with misty mornings and hill tribe culture.",
+    descriptionEn: "Nature-focused escape with misty mornings and hill tribe culture.",
+    tourTypeIds: ["adventure", "heritage"],
+    availableDurations: ["full"],
   },
   {
     id: "ayutthaya",
-    nameTh: "อยุธยา เมืองมรดก",
+    nameTh: "Ayutthaya Heritage",
     nameEn: "Ayutthaya Heritage",
-    areaTh: "ภาคกลาง",
+    areaTh: "Central Thailand",
     areaEn: "Central Thailand",
     imagePath: "ayutthaya-heritage.jpg",
     highlights: ["Temple tour", "River cruise", "Local craft"],
+    descriptionTh: "Historic city tour with temples, riverside views, and local crafts.",
+    descriptionEn: "Historic city tour with temples, riverside views, and local crafts.",
+    tourTypeIds: ["heritage"],
+    availableDurations: ["full", "half"],
   },
   {
     id: "krabi",
-    nameTh: "กระบี่ หน้าผาและหาดลับ",
+    nameTh: "Krabi Cliffs & Coves",
     nameEn: "Krabi Cliffs & Coves",
-    areaTh: "ทะเลใต้",
+    areaTh: "Southern Sea",
     areaEn: "Southern Sea",
     imagePath: "krabi-cliffs.jpg",
     highlights: ["Kayak", "Limestone cliffs", "Beach picnic"],
+    descriptionTh: "Boat trip through limestone cliffs with secluded beach stops.",
+    descriptionEn: "Boat trip through limestone cliffs with secluded beach stops.",
+    tourTypeIds: ["islands", "adventure"],
+    availableDurations: ["full"],
   },
 ];
 
 export const ADDONS = {
   guide: {
-    labelTh: "ไกด์มืออาชีพ",
+    labelTh: "Professional guide",
     labelEn: "Professional Guide",
   },
   meals: {
-    labelTh: "อาหารกลางวัน",
+    labelTh: "Lunch meals",
     labelEn: "Lunch Meals",
   },
   pickup: {
-    labelTh: "รับ-ส่งโรงแรม",
+    labelTh: "Hotel pickup",
     labelEn: "Hotel Pickup",
   },
 };
+
+export const DEFAULT_DURATIONS: Duration[] = ["full", "half"];
+
+type LocationLike = Partial<Location> &
+  Pick<Location, "id" | "nameTh" | "nameEn" | "areaTh" | "areaEn" | "imagePath">;
+
+export function normalizeLocation(
+  location: LocationLike,
+  allTourTypeIds: string[] = []
+): Location {
+  const tourTypeIds =
+    location.tourTypeIds && location.tourTypeIds.length
+      ? location.tourTypeIds
+      : allTourTypeIds;
+  const availableDurations =
+    location.availableDurations && location.availableDurations.length
+      ? location.availableDurations
+      : DEFAULT_DURATIONS;
+
+  return {
+    id: location.id,
+    nameTh: location.nameTh ?? "",
+    nameEn: location.nameEn ?? "",
+    areaTh: location.areaTh ?? "",
+    areaEn: location.areaEn ?? "",
+    imagePath: location.imagePath ?? "",
+    highlights: location.highlights ?? [],
+    descriptionTh: location.descriptionTh ?? "",
+    descriptionEn: location.descriptionEn ?? "",
+    tourTypeIds: tourTypeIds.filter(Boolean),
+    availableDurations: availableDurations.filter(Boolean) as Duration[],
+  };
+}

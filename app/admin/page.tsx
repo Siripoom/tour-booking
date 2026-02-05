@@ -8,13 +8,13 @@ export default function AdminPage() {
       <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 py-16">
         <div>
           <p className="text-xs uppercase tracking-[0.3em] text-emerald-600">
-            Admin / หลังบ้าน
+            Admin
           </p>
           <h1 className="mt-3 text-4xl font-semibold text-slate-900">
-            จัดการข้อมูลการจอง
+            Manage bookings
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-slate-500">
-            ดูรายการจองล่าสุด ค้นหา และตรวจสอบรายละเอียดก่อนติดต่อกลับ
+            Review recent bookings, search, and verify details before follow-up.
           </p>
         </div>
         <AdminAuthGate>

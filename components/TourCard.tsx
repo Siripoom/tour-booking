@@ -33,9 +33,8 @@ export default function TourCard({ location }: TourCardProps) {
           {location.areaEn}
         </p>
         <h3 className="mt-2 text-xl font-semibold text-slate-900">
-          {location.nameTh}
+          {location.nameEn}
         </h3>
-        <p className="text-sm text-slate-500">{location.nameEn}</p>
         <ul className="mt-4 space-y-2 text-sm text-slate-600">
           {(location.highlights ?? []).map((item) => (
             <li key={item} className="flex items-center gap-2">

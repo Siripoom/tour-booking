@@ -12,12 +12,29 @@ export const supabase =
 
 export function getPublicImageUrl(path?: string | null) {
   if (!supabase || !path) {
+    if (!path) {
+      return "";
+    }
+  }
+
+  const safePath = path.trim().replace(/^["']|["']$/g, "");
+  if (!safePath) {
     return "";
   }
 
-  const safePath = path.trim();
-  if (!safePath) {
-    return "";
+  if (/^https?:\/\//i.test(safePath) || safePath.startsWith("/")) {
+    return safePath;
+  }
+
+  if (!supabase) {
+    if (!supabaseUrl) {
+      return "";
+    }
+    const encodedPath = safePath
+      .split("/")
+      .map((part) => encodeURIComponent(part))
+      .join("/");
+    return `${supabaseUrl}/storage/v1/object/public/${SUPABASE_BUCKET}/${encodedPath}`;
   }
 
   const { data } = supabase.storage

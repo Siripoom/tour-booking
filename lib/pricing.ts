@@ -51,22 +51,24 @@ export function calculatePrice(input: PricingInput): PriceBreakdown {
     total: base + addonsTotal,
     lines: [
       {
-        labelTh: `ค่าทัวร์ ${input.duration === "full" ? "เต็มวัน" : "ครึ่งวัน"} x ${partySize} คน`,
+        labelTh: `${
+          input.duration === "full" ? "Full day" : "Half day"
+        } base x ${partySize} pax`,
         labelEn: `${input.duration === "full" ? "Full day" : "Half day"} base x ${partySize} pax`,
         amount: base,
       },
       {
-        labelTh: "ไกด์มืออาชีพ",
+        labelTh: "Professional guide",
         labelEn: "Professional guide",
         amount: guide,
       },
       {
-        labelTh: "อาหารกลางวัน",
+        labelTh: "Lunch meals",
         labelEn: "Lunch meals",
         amount: meals,
       },
       {
-        labelTh: "รับ-ส่งโรงแรม (ต่อกรุ๊ป)",
+        labelTh: "Hotel pickup (per group)",
         labelEn: "Hotel pickup (per group)",
         amount: pickup,
       },

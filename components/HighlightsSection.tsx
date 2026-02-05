@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { LOCATIONS, Location } from "@/lib/catalog";
+import { LOCATIONS, Location, TOUR_TYPES, normalizeLocation } from "@/lib/catalog";
 import TourCard from "@/components/TourCard";
 
 export default function HighlightsSection() {
@@ -17,7 +17,10 @@ export default function HighlightsSection() {
         ...(doc.data() as Omit<Location, "id">),
       }));
       if (locs.length) {
-        setLocations(locs);
+        const allTourTypeIds = TOUR_TYPES.map((type) => type.id);
+        setLocations(
+          locs.map((location) => normalizeLocation(location, allTourTypeIds))
+        );
       }
     };
 
@@ -29,14 +32,15 @@ export default function HighlightsSection() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-[0.3em] text-emerald-600">
-            Highlights / สถานที่ยอดนิยม
+            Highlights
           </p>
           <h2 className="mt-2 text-3xl font-semibold text-slate-900">
-            จุดหมายที่คนชอบที่สุด
+            Most loved destinations
           </h2>
         </div>
         <p className="max-w-xl text-sm text-slate-500">
-          เลือกสถานที่ที่เหมาะกับสไตล์การท่องเที่ยวของคุณ — พร้อมทีมงานดูแลทุกขั้นตอน
+          Pick a destination that matches your travel style — our team will take
+          care of every detail.
         </p>
       </div>
       <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-4">

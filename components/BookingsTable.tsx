@@ -9,7 +9,13 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { LOCATIONS, TOUR_TYPES, Location, TourType } from "@/lib/catalog";
+import {
+  LOCATIONS,
+  TOUR_TYPES,
+  Location,
+  TourType,
+  normalizeLocation,
+} from "@/lib/catalog";
 import { formatTHB } from "@/lib/pricing";
 
 type BookingRow = {
@@ -42,6 +48,10 @@ export default function BookingsTable() {
   const [loading, setLoading] = useState(true);
   const [tourTypes, setTourTypes] = useState<TourType[]>(TOUR_TYPES);
   const [locations, setLocations] = useState<Location[]>(LOCATIONS);
+  const [emailStatus, setEmailStatus] = useState<
+    Record<string, "idle" | "sending" | "success" | "error">
+  >({});
+  const [emailMessage, setEmailMessage] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const fetchBookings = async () => {
@@ -98,17 +108,23 @@ export default function BookingsTable() {
         ...(doc.data() as Omit<Location, "id">),
       }));
 
-      if (tours.length) {
-        setTourTypes(tours);
-      }
-      if (locs.length) {
-        setLocations(locs);
-      }
+      const nextTours = tours.length ? tours : TOUR_TYPES;
+      const allTourTypeIds = nextTours.map((type) => type.id).filter(Boolean);
+      const nextLocations = (locs.length ? locs : LOCATIONS).map((location) =>
+        normalizeLocation(location, allTourTypeIds)
+      );
+
+      setTourTypes(nextTours);
+      setLocations(nextLocations);
     };
 
     fetchCatalogs().catch(() => {
       setTourTypes(TOUR_TYPES);
-      setLocations(LOCATIONS);
+      setLocations(
+        LOCATIONS.map((location) =>
+          normalizeLocation(location, TOUR_TYPES.map((type) => type.id))
+        )
+      );
     });
   }, []);
 
@@ -131,15 +147,62 @@ export default function BookingsTable() {
     return matchesText && matchesDate;
   });
 
+  const sendBookingEmail = async (
+    booking: BookingRow,
+    tourType?: TourType,
+    location?: Location
+  ) => {
+    setEmailStatus((prev) => ({ ...prev, [booking.id]: "sending" }));
+    setEmailMessage((prev) => ({ ...prev, [booking.id]: "" }));
+
+    try {
+      const response = await fetch("/api/send-booking", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: booking.contactEmail,
+          booking: {
+            contactName: booking.contactName,
+            date: booking.date,
+            time: booking.time,
+            duration: booking.duration,
+            tourTypeLabelEn: tourType?.labelEn ?? booking.tourType,
+            locationNameEn: location?.nameEn ?? booking.locationId,
+            partySize: booking.partySize,
+            addons: booking.addons,
+            priceTotal: booking.price?.total ?? 0,
+            notes: booking.notes ?? "",
+          },
+          locale: booking.locale,
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to send email");
+      }
+
+      setEmailStatus((prev) => ({ ...prev, [booking.id]: "success" }));
+      setEmailMessage((prev) => ({ ...prev, [booking.id]: "Email sent" }));
+    } catch (error) {
+      setEmailStatus((prev) => ({ ...prev, [booking.id]: "error" }));
+      setEmailMessage((prev) => ({
+        ...prev,
+        [booking.id]:
+          error instanceof Error ? error.message : "Failed to send email",
+      }));
+    }
+  };
+
   return (
     <div className="rounded-3xl border border-white/70 bg-white/75 p-6 shadow-[0_30px_80px_-60px_rgba(15,23,42,0.6)] backdrop-blur">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-[0.3em] text-emerald-600">
-            Bookings / รายการจอง
+            Bookings
           </p>
           <h2 className="mt-2 text-3xl font-semibold text-slate-900">
-            รายการจองล่าสุด / Recent bookings
+            Recent bookings
           </h2>
         </div>
         <div className="flex flex-wrap gap-3">
@@ -148,7 +211,7 @@ export default function BookingsTable() {
             value={queryText}
             onChange={(event) => setQueryText(event.target.value)}
             className="w-56 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 shadow-sm outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200"
-            placeholder="ค้นหาชื่อ/อีเมล"
+            placeholder="Search name/email"
           />
           <input
             type="date"
@@ -161,20 +224,21 @@ export default function BookingsTable() {
 
       <div className="mt-6 overflow-x-auto">
         {loading ? (
-          <p className="text-sm text-slate-500">กำลังโหลดข้อมูล...</p>
+          <p className="text-sm text-slate-500">Loading bookings...</p>
         ) : filtered.length === 0 ? (
           <p className="text-sm text-slate-500">
-            ยังไม่มีรายการจองที่ตรงกับเงื่อนไข
+            No bookings match your filters yet.
           </p>
         ) : (
           <table className="w-full text-left text-sm">
             <thead className="text-xs uppercase tracking-[0.2em] text-slate-400">
               <tr>
-                <th className="py-3">วันเวลา</th>
-                <th className="py-3">ผู้ติดต่อ</th>
-                <th className="py-3">ทัวร์</th>
-                <th className="py-3">บริการเสริม</th>
-                <th className="py-3 text-right">ยอดรวม</th>
+                <th className="py-3">Date/time</th>
+                <th className="py-3">Contact</th>
+                <th className="py-3">Tour</th>
+                <th className="py-3">Add-ons</th>
+                <th className="py-3 text-right">Total</th>
+                <th className="py-3 text-right">Email</th>
               </tr>
             </thead>
             <tbody className="text-slate-600">
@@ -192,9 +256,9 @@ export default function BookingsTable() {
                       </p>
                       <p className="text-xs text-slate-500">
                         {booking.duration === "full"
-                          ? "เต็มวัน"
-                          : "ครึ่งวัน"}{" "}
-                        • {booking.partySize} คน
+                          ? "Full day"
+                          : "Half day"}{" "}
+                        • {booking.partySize} people
                       </p>
                     </td>
                     <td className="py-4">
@@ -207,27 +271,27 @@ export default function BookingsTable() {
                     </td>
                     <td className="py-4">
                       <p className="font-medium text-slate-900">
-                        {tourType?.labelTh ?? booking.tourType}
+                        {tourType?.labelEn ?? booking.tourType}
                       </p>
                       <p className="text-xs text-slate-500">
-                        {location?.nameTh ?? booking.locationId}
+                        {location?.nameEn ?? booking.locationId}
                       </p>
                     </td>
                     <td className="py-4">
                       <div className="flex flex-wrap gap-2">
                         {booking.addons.guide ? (
                           <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs text-emerald-600">
-                            ไกด์
+                            Guide
                           </span>
                         ) : null}
                         {booking.addons.meals ? (
                           <span className="rounded-full bg-amber-50 px-3 py-1 text-xs text-amber-600">
-                            อาหาร
+                            Meals
                           </span>
                         ) : null}
                         {booking.addons.pickup ? (
                           <span className="rounded-full bg-sky-50 px-3 py-1 text-xs text-sky-600">
-                            รับ-ส่ง
+                            Pickup
                           </span>
                         ) : null}
                         {!booking.addons.guide &&
@@ -239,6 +303,31 @@ export default function BookingsTable() {
                     </td>
                     <td className="py-4 text-right font-semibold text-slate-900">
                       {formatTHB(booking.price?.total ?? 0)}
+                    </td>
+                    <td className="py-4 text-right">
+                      <button
+                        type="button"
+                        className="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-semibold text-emerald-700 transition hover:border-emerald-300"
+                        disabled={emailStatus[booking.id] === "sending"}
+                        onClick={() =>
+                          sendBookingEmail(booking, tourType, location)
+                        }
+                      >
+                        {emailStatus[booking.id] === "sending"
+                          ? "Sending..."
+                          : "Send email"}
+                      </button>
+                      {emailMessage[booking.id] ? (
+                        <p
+                          className={`mt-2 text-xs ${
+                            emailStatus[booking.id] === "error"
+                              ? "text-rose-500"
+                              : "text-emerald-600"
+                          }`}
+                        >
+                          {emailMessage[booking.id]}
+                        </p>
+                      ) : null}
                     </td>
                   </tr>
                 );

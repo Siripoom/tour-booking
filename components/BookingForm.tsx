@@ -8,7 +8,65 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { ADDONS, LOCATIONS, TOUR_TYPES, Location, TourType } from "@/lib/catalog";
+import {
+  ADDONS,
+  LOCATIONS,
+  TOUR_TYPES,
+  Location,
+  TourType,
+  normalizeLocation,
+} from "@/lib/catalog";
+import { getPublicImageUrl } from "@/lib/supabase";
+
+type LocationCardProps = {
+  location: Location;
+  isSelected: boolean;
+  onSelect: () => void;
+};
+
+function LocationCard({ location, isSelected, onSelect }: LocationCardProps) {
+  const [imageError, setImageError] = useState(false);
+  const imageUrl = useMemo(
+    () => getPublicImageUrl(location.imagePath),
+    [location.imagePath]
+  );
+  const showFallback = !imageUrl || imageError;
+
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`group overflow-hidden rounded-2xl border text-left transition ${
+        isSelected
+          ? "border-emerald-400 bg-emerald-50/60"
+          : "border-slate-200 bg-white/70 hover:border-emerald-200"
+      }`}
+    >
+      <div className="relative h-36 bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.25),_transparent_65%)]">
+        {!showFallback ? (
+          <img
+            src={imageUrl}
+            alt={location.nameEn}
+            loading="lazy"
+            className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
+            onError={() => setImageError(true)}
+          />
+        ) : null}
+        {showFallback ? (
+          <div className="absolute inset-0 flex items-center justify-center text-xs uppercase tracking-[0.3em] text-slate-300">
+            No image
+          </div>
+        ) : null}
+      </div>
+      <div className="space-y-1 p-4">
+        <p className="text-sm font-semibold text-slate-900">
+          {location.nameEn}
+        </p>
+        <p className="text-xs text-slate-500">{location.descriptionEn}</p>
+      </div>
+    </button>
+  );
+}
 import {
   BASE_PRICE,
   calculatePrice,
@@ -51,7 +109,7 @@ const defaultState: FormState = {
   contactName: "",
   contactEmail: "",
   notes: "",
-  locale: "th",
+  locale: "en",
 };
 
 const inputClass =
@@ -65,6 +123,53 @@ export default function BookingForm() {
   const [message, setMessage] = useState("");
   const [tourTypes, setTourTypes] = useState<TourType[]>(TOUR_TYPES);
   const [locations, setLocations] = useState<Location[]>(LOCATIONS);
+
+  const allTourTypeIds = useMemo(
+    () => tourTypes.map((type) => type.id).filter(Boolean),
+    [tourTypes]
+  );
+  const normalizedLocations = useMemo(
+    () =>
+      locations.map((location) =>
+        normalizeLocation(location, allTourTypeIds)
+      ),
+    [locations, allTourTypeIds]
+  );
+
+  const filteredLocations = useMemo(
+    () =>
+      normalizedLocations.filter(
+        (location) =>
+          location.tourTypeIds.includes(formData.tourType) &&
+          location.availableDurations.includes(formData.duration)
+      ),
+    [normalizedLocations, formData.tourType, formData.duration]
+  );
+
+  useEffect(() => {
+    if (
+      !filteredLocations.find(
+        (location) => location.id === formData.locationId
+      )
+    ) {
+      setFormData((prev) => ({
+        ...prev,
+        locationId: filteredLocations[0]?.id ?? "",
+      }));
+    }
+  }, [filteredLocations, formData.locationId]);
+
+  const selectedTourType = useMemo(
+    () => tourTypes.find((type) => type.id === formData.tourType),
+    [tourTypes, formData.tourType]
+  );
+  const selectedLocation = useMemo(
+    () =>
+      normalizedLocations.find(
+        (location) => location.id === formData.locationId
+      ),
+    [normalizedLocations, formData.locationId]
+  );
 
   const breakdown: PriceBreakdown = useMemo(
     () =>
@@ -93,7 +198,10 @@ export default function BookingForm() {
       }));
 
       const nextTours = tours.length ? tours : TOUR_TYPES;
-      const nextLocations = locs.length ? locs : LOCATIONS;
+      const allTourTypeIds = nextTours.map((type) => type.id).filter(Boolean);
+      const nextLocations = (locs.length ? locs : LOCATIONS).map((location) =>
+        normalizeLocation(location, allTourTypeIds)
+      );
 
       setTourTypes(nextTours);
       setLocations(nextLocations);
@@ -111,7 +219,11 @@ export default function BookingForm() {
 
     fetchCatalogs().catch(() => {
       setTourTypes(TOUR_TYPES);
-      setLocations(LOCATIONS);
+      setLocations(
+        LOCATIONS.map((location) =>
+          normalizeLocation(location, TOUR_TYPES.map((type) => type.id))
+        )
+      );
     });
   }, []);
 
@@ -122,13 +234,13 @@ export default function BookingForm() {
 
     if (!formData.contactName.trim()) {
       setStatus("error");
-      setMessage("กรุณากรอกชื่อผู้ติดต่อ / Contact name is required.");
+      setMessage("Contact name is required.");
       return;
     }
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.contactEmail)) {
       setStatus("error");
-      setMessage("กรุณากรอกอีเมลให้ถูกต้อง / Invalid email address.");
+      setMessage("Invalid email address.");
       return;
     }
 
@@ -156,12 +268,12 @@ export default function BookingForm() {
 
       setStatus("success");
       setMessage(
-        "ส่งข้อมูลเรียบร้อยแล้ว ทีมงานจะติดต่อกลับภายใน 24 ชม. / Submission received."
+        "Submission received. Our team will contact you within 24 hours."
       );
       setFormData(defaultState);
     } catch (error) {
       setStatus("error");
-      setMessage("ส่งข้อมูลไม่สำเร็จ กรุณาลองอีกครั้ง / Submission failed.");
+      setMessage("Submission failed. Please try again.");
       console.error(error);
     }
   };
@@ -175,21 +287,21 @@ export default function BookingForm() {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="text-xs uppercase tracking-[0.3em] text-emerald-600">
-              Booking / การจอง
+              Booking
             </p>
             <h2 className="mt-2 text-3xl font-semibold text-slate-900">
-              จองทัวร์ของคุณ / Book Your Tour
+              Book Your Tour
             </h2>
           </div>
           <div className="flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700">
             <span className="h-2 w-2 rounded-full bg-emerald-400" />
-            พร้อมดูแลแบบพรีเมียม / Premium care
+            Premium care
           </div>
         </div>
 
         <div className="mt-6 grid gap-4 md:grid-cols-2">
           <label className="text-sm font-medium text-slate-700">
-            วันที่เดินทาง / Date
+            Date
             <input
               type="date"
               className={inputClass}
@@ -201,7 +313,7 @@ export default function BookingForm() {
             />
           </label>
           <label className="text-sm font-medium text-slate-700">
-            เวลาเริ่ม / Time
+            Time
             <input
               type="time"
               className={inputClass}
@@ -213,7 +325,7 @@ export default function BookingForm() {
             />
           </label>
           <label className="text-sm font-medium text-slate-700">
-            จำนวนคน / Party size
+            Party size
             <input
               type="number"
               min={1}
@@ -229,27 +341,11 @@ export default function BookingForm() {
               required
             />
           </label>
-          <label className="text-sm font-medium text-slate-700">
-            ภาษาเอกสาร / Preferred language
-            <select
-              className={inputClass}
-              value={formData.locale}
-              onChange={(event) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  locale: event.target.value as "th" | "en",
-                }))
-              }
-            >
-              <option value="th">ไทย</option>
-              <option value="en">English</option>
-            </select>
-          </label>
         </div>
 
         <div className="mt-6">
           <p className="text-sm font-medium text-slate-700">
-            ระยะเวลา / Duration
+            Duration
           </p>
           <div className="mt-3 grid gap-3 md:grid-cols-2">
             {(["full", "half"] as Duration[]).map((value) => (
@@ -266,11 +362,10 @@ export default function BookingForm() {
                 }`}
               >
                 <p className="text-sm font-semibold">
-                  {value === "full" ? "เต็มวัน" : "ครึ่งวัน"} /{" "}
                   {value === "full" ? "Full day" : "Half day"}
                 </p>
                 <p className="text-xs text-slate-500">
-                  {formatTHB(BASE_PRICE[value])} / คน
+                  {formatTHB(BASE_PRICE[value])} / person
                 </p>
               </button>
             ))}
@@ -279,7 +374,7 @@ export default function BookingForm() {
 
         <div className="mt-6 grid gap-4 md:grid-cols-2">
           <label className="text-sm font-medium text-slate-700">
-            ประเภททัวร์ / Tour type
+            Tour type
             <select
               className={inputClass}
               value={formData.tourType}
@@ -292,26 +387,7 @@ export default function BookingForm() {
             >
               {tourTypes.map((type) => (
                 <option key={type.id} value={type.id}>
-                  {type.labelTh} / {type.labelEn}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="text-sm font-medium text-slate-700">
-            สถานที่ / Location
-            <select
-              className={inputClass}
-              value={formData.locationId}
-              onChange={(event) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  locationId: event.target.value,
-                }))
-              }
-            >
-              {locations.map((location) => (
-                <option key={location.id} value={location.id}>
-                  {location.nameTh} / {location.nameEn}
+                  {type.labelEn}
                 </option>
               ))}
             </select>
@@ -319,8 +395,59 @@ export default function BookingForm() {
         </div>
 
         <div className="mt-6">
+          <p className="text-sm font-medium text-slate-700">Location</p>
+          {filteredLocations.length === 0 ? (
+            <p className="mt-2 text-xs text-rose-500">
+              No locations match this tour type and duration yet.
+            </p>
+          ) : (
+            <div className="mt-3 grid gap-4 md:grid-cols-2">
+              {filteredLocations.map((location) => {
+                const isSelected = formData.locationId === location.id;
+                return (
+                  <LocationCard
+                    key={location.id}
+                    location={location}
+                    isSelected={isSelected}
+                    onSelect={() =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        locationId: location.id,
+                      }))
+                    }
+                  />
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="mt-4 grid gap-3 rounded-3xl border border-slate-200/60 bg-white/70 p-4 text-sm text-slate-600">
+          {selectedTourType ? (
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-emerald-500">
+                Tour type details
+              </p>
+              <p className="mt-1 text-slate-900">
+                {selectedTourType.descriptionEn}
+              </p>
+            </div>
+          ) : null}
+          {selectedLocation ? (
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-emerald-500">
+                Location details
+              </p>
+              <p className="mt-1 text-slate-900">
+                {selectedLocation.descriptionEn}
+              </p>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="mt-6">
           <p className="text-sm font-medium text-slate-700">
-            บริการเสริม / Add-ons
+            Add-ons
           </p>
           <div className="mt-3 grid gap-3 md:grid-cols-3">
             {(
@@ -347,9 +474,8 @@ export default function BookingForm() {
                 />
                 <div>
                   <p className="font-medium text-slate-800">
-                    {addon.labelTh}
+                    {addon.labelEn}
                   </p>
-                  <p className="text-xs text-slate-500">{addon.labelEn}</p>
                 </div>
               </label>
             ))}
@@ -358,7 +484,7 @@ export default function BookingForm() {
 
         <div className="mt-6 grid gap-4 md:grid-cols-2">
           <label className="text-sm font-medium text-slate-700">
-            ชื่อผู้ติดต่อ / Contact name
+            Contact name
             <input
               type="text"
               className={inputClass}
@@ -373,7 +499,7 @@ export default function BookingForm() {
             />
           </label>
           <label className="text-sm font-medium text-slate-700">
-            อีเมล / Email
+            Email
             <input
               type="email"
               className={inputClass}
@@ -390,14 +516,14 @@ export default function BookingForm() {
         </div>
 
         <label className="mt-6 block text-sm font-medium text-slate-700">
-          ข้อความเพิ่มเติม / Notes
+          Notes
           <textarea
             className={`${inputClass} min-h-[110px]`}
             value={formData.notes}
             onChange={(event) =>
               setFormData((prev) => ({ ...prev, notes: event.target.value }))
             }
-            placeholder="แจ้งเวลารับ-ส่ง หรือความต้องการพิเศษอื่นๆ"
+            placeholder="Pickup time or special requests"
           />
         </label>
 
@@ -416,7 +542,7 @@ export default function BookingForm() {
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
-              Total / รวม
+              Total
             </p>
             <p className="text-2xl font-semibold text-slate-900">
               {formatTHB(breakdown.total)}
@@ -428,8 +554,8 @@ export default function BookingForm() {
             className="rounded-full bg-emerald-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-200 transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:bg-emerald-300"
           >
             {status === "submitting"
-              ? "กำลังส่ง... / Sending"
-              : "ส่งข้อมูลการจอง / Submit booking"}
+              ? "Sending..."
+              : "Submit booking"}
           </button>
         </div>
       </form>

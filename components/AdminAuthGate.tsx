@@ -14,7 +14,7 @@ export default function AdminAuthGate({ children }: AdminAuthGateProps) {
   const [message, setMessage] = useState(() =>
     expectedPassword
       ? ""
-      : "ยังไม่ได้ตั้งค่า NEXT_PUBLIC_ADMIN_PASSWORD — เปิดใช้งานโหมดเดโม่"
+      : "NEXT_PUBLIC_ADMIN_PASSWORD is not set — demo mode enabled"
   );
   const [isAuthed, setIsAuthed] = useState(() => {
     if (!expectedPassword) {
@@ -27,7 +27,7 @@ export default function AdminAuthGate({ children }: AdminAuthGateProps) {
   });
 
   if (isAuthed) {
-    return (
+      return (
       <div>
         {message ? (
           <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
@@ -42,10 +42,10 @@ export default function AdminAuthGate({ children }: AdminAuthGateProps) {
   return (
     <div className="rounded-3xl border border-white/70 bg-white/75 p-6 shadow-[0_30px_80px_-60px_rgba(15,23,42,0.6)] backdrop-blur">
       <h2 className="text-2xl font-semibold text-slate-900">
-        Admin Access / เข้าสู่ระบบแอดมิน
+        Admin Access
       </h2>
       <p className="mt-2 text-sm text-slate-500">
-        ใส่รหัสผ่านเพื่อดูรายการจอง
+        Enter the password to view bookings.
       </p>
       <div className="mt-4 flex flex-col gap-3 sm:flex-row">
         <input
@@ -53,7 +53,7 @@ export default function AdminAuthGate({ children }: AdminAuthGateProps) {
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200"
-          placeholder="รหัสผ่าน / Password"
+          placeholder="Password"
         />
         <button
           type="button"
@@ -61,7 +61,7 @@ export default function AdminAuthGate({ children }: AdminAuthGateProps) {
             if (!expectedPassword) {
               setIsAuthed(true);
               setMessage(
-                "ยังไม่ได้ตั้งค่า NEXT_PUBLIC_ADMIN_PASSWORD — เปิดใช้งานโหมดเดโม่"
+                "NEXT_PUBLIC_ADMIN_PASSWORD is not set — demo mode enabled"
               );
               return;
             }
@@ -71,12 +71,12 @@ export default function AdminAuthGate({ children }: AdminAuthGateProps) {
               setIsAuthed(true);
               setMessage("");
             } else {
-              setMessage("รหัสผ่านไม่ถูกต้อง / Incorrect password.");
+              setMessage("Incorrect password.");
             }
           }}
           className="rounded-full bg-emerald-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-200 transition hover:bg-emerald-600"
         >
-          เข้าสู่ระบบ
+          Sign in
         </button>
       </div>
       {message ? (
