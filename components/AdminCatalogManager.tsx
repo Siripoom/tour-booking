@@ -7,6 +7,7 @@ import {
   deleteDoc,
   doc,
   getDocs,
+  updateDoc,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import {
@@ -16,7 +17,7 @@ import {
   TourType,
   normalizeLocation,
 } from "@/lib/catalog";
-import { Duration } from "@/lib/pricing";
+import { Duration, formatTHB } from "@/lib/pricing";
 import { SUPABASE_BUCKET, supabase } from "@/lib/supabase";
 
 type CatalogTourType = TourType & { id?: string };
@@ -27,6 +28,8 @@ type TourTypeForm = {
   description: string;
 };
 
+type PriceInputMap = Record<Duration, string>;
+
 type LocationForm = {
   name: string;
   area: string;
@@ -35,10 +38,18 @@ type LocationForm = {
   description: string;
   tourTypeIds: string[];
   availableDurations: Duration[];
+  pricePerPerson: PriceInputMap;
 };
 
 const inputClass =
   "w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 shadow-sm outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200";
+
+const ALL_DURATIONS: Duration[] = ["full", "half"];
+
+const emptyPriceInputs = (): PriceInputMap => ({
+  full: "",
+  half: "",
+});
 
 export default function AdminCatalogManager() {
   const [tourTypes, setTourTypes] = useState<CatalogTourType[]>([]);
@@ -55,12 +66,59 @@ export default function AdminCatalogManager() {
     description: "",
     tourTypeIds: [],
     availableDurations: ["full", "half"],
+    pricePerPerson: emptyPriceInputs(),
   });
+  const [editingLocationId, setEditingLocationId] = useState<string | null>(null);
+  const [editingPrices, setEditingPrices] = useState<PriceInputMap>(
+    emptyPriceInputs()
+  );
   const [message, setMessage] = useState("");
   const [uploadStatus, setUploadStatus] = useState<
     "idle" | "uploading" | "success" | "error"
   >("idle");
   const [uploadMessage, setUploadMessage] = useState("");
+
+  const parsePrice = (value: string) => {
+    if (!value.trim()) {
+      return null;
+    }
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) {
+      return null;
+    }
+    const rounded = Math.round(parsed);
+    if (rounded < 0) {
+      return null;
+    }
+    return rounded;
+  };
+
+  const buildPricePayload = (
+    prices: PriceInputMap,
+    requiredDurations: Duration[]
+  ) => {
+    const payload: Partial<Record<Duration, number>> = {};
+
+    for (const duration of ALL_DURATIONS) {
+      const parsed = parsePrice(prices[duration]);
+      if (parsed !== null) {
+        payload[duration] = parsed;
+      }
+    }
+
+    for (const duration of requiredDurations) {
+      if (payload[duration] === undefined) {
+        return {
+          error: `Please provide a valid ${
+            duration === "full" ? "Full day" : "Half day"
+          } price.`,
+          payload,
+        };
+      }
+    }
+
+    return { error: "", payload };
+  };
 
   useEffect(() => {
     const loadCatalogs = async () => {
@@ -78,41 +136,39 @@ export default function AdminCatalogManager() {
         ...(doc.data() as Omit<Location, "id">),
       }));
 
-      const nextTours = tours.length
-        ? tours
-        : TOUR_TYPES.map((t) => ({ ...t }));
+      const nextTours = tours.length ? tours : TOUR_TYPES.map((t) => ({ ...t }));
       const allTourTypeIds = nextTours.map((type) => type.id);
       const nextLocations = (locs.length ? locs : LOCATIONS).map((location) =>
-        normalizeLocation(location, allTourTypeIds),
+        normalizeLocation(location, allTourTypeIds)
       );
 
       setTourTypes(nextTours);
       setLocations(nextLocations);
+      setLocationForm((prev) =>
+        prev.tourTypeIds.length
+          ? prev
+          : { ...prev, tourTypeIds: nextTours.map((type) => type.id) }
+      );
     };
 
     loadCatalogs().catch(() => {
-      setTourTypes(TOUR_TYPES.map((t) => ({ ...t })));
+      const fallbackTours = TOUR_TYPES.map((t) => ({ ...t }));
+      setTourTypes(fallbackTours);
       setLocations(
         LOCATIONS.map((location) =>
           normalizeLocation(
             location,
-            TOUR_TYPES.map((type) => type.id),
-          ),
-        ),
+            TOUR_TYPES.map((type) => type.id)
+          )
+        )
+      );
+      setLocationForm((prev) =>
+        prev.tourTypeIds.length
+          ? prev
+          : { ...prev, tourTypeIds: fallbackTours.map((type) => type.id) }
       );
     });
   }, []);
-
-  useEffect(() => {
-    if (!tourTypes.length) {
-      return;
-    }
-    setLocationForm((prev) =>
-      prev.tourTypeIds.length
-        ? prev
-        : { ...prev, tourTypeIds: tourTypes.map((type) => type.id) },
-    );
-  }, [tourTypes]);
 
   const refreshCatalogs = async () => {
     const [tourSnap, locationSnap] = await Promise.all([
@@ -132,7 +188,7 @@ export default function AdminCatalogManager() {
     const nextTours = tours.length ? tours : TOUR_TYPES.map((t) => ({ ...t }));
     const allTourTypeIds = nextTours.map((type) => type.id);
     const nextLocations = (locs.length ? locs : LOCATIONS).map((location) =>
-      normalizeLocation(location, allTourTypeIds),
+      normalizeLocation(location, allTourTypeIds)
     );
 
     setTourTypes(nextTours);
@@ -141,17 +197,19 @@ export default function AdminCatalogManager() {
 
   const sortedTourTypes = useMemo(
     () => [...tourTypes].sort((a, b) => a.labelEn.localeCompare(b.labelEn)),
-    [tourTypes],
+    [tourTypes]
   );
+
   const sortedLocations = useMemo(() => {
     const allTourTypeIds = tourTypes.map((type) => type.id);
     return [...locations]
       .map((location) => normalizeLocation(location, allTourTypeIds))
       .sort((a, b) => a.nameEn.localeCompare(b.nameEn));
   }, [locations, tourTypes]);
+
   const tourTypeMap = useMemo(
     () => new Map(tourTypes.map((type) => [type.id, type])),
-    [tourTypes],
+    [tourTypes]
   );
 
   const slugify = (value: string) =>
@@ -203,16 +261,19 @@ export default function AdminCatalogManager() {
       descriptionTh: tourForm.description,
       descriptionEn: tourForm.description,
     });
+
     setTourForm({
       label: "",
       description: "",
     });
+
     await refreshCatalogs();
     setMessage("Tour type added.");
   };
 
   const handleAddLocation = async () => {
     setMessage("");
+
     if (!locationForm.name.trim()) {
       setMessage("Please provide a location name.");
       return;
@@ -223,11 +284,23 @@ export default function AdminCatalogManager() {
       .map((item) => item.trim())
       .filter(Boolean);
     const tourTypeIds = Array.from(
-      new Set(locationForm.tourTypeIds.filter(Boolean)),
+      new Set(locationForm.tourTypeIds.filter(Boolean))
     );
     const availableDurations = Array.from(
-      new Set(locationForm.availableDurations),
+      new Set(locationForm.availableDurations)
     ) as Duration[];
+    const requiredDurations = (availableDurations.length
+      ? availableDurations
+      : ALL_DURATIONS) as Duration[];
+    const { error, payload } = buildPricePayload(
+      locationForm.pricePerPerson,
+      requiredDurations
+    );
+
+    if (error) {
+      setMessage(error);
+      return;
+    }
 
     await addDoc(collection(db, "locations"), {
       nameTh: locationForm.name,
@@ -240,7 +313,9 @@ export default function AdminCatalogManager() {
       descriptionEn: locationForm.description,
       tourTypeIds,
       availableDurations,
+      pricePerPerson: payload,
     });
+
     setLocationForm({
       name: "",
       area: "",
@@ -249,7 +324,9 @@ export default function AdminCatalogManager() {
       description: "",
       tourTypeIds: tourTypes.map((type) => type.id),
       availableDurations: ["full", "half"],
+      pricePerPerson: emptyPriceInputs(),
     });
+
     await refreshCatalogs();
     setMessage("Location added.");
   };
@@ -261,6 +338,7 @@ export default function AdminCatalogManager() {
     if (!window.confirm("Delete this tour type?")) {
       return;
     }
+
     setMessage("");
     await deleteDoc(doc(db, "tourTypes", id));
     await refreshCatalogs();
@@ -274,10 +352,62 @@ export default function AdminCatalogManager() {
     if (!window.confirm("Delete this location?")) {
       return;
     }
+
     setMessage("");
     await deleteDoc(doc(db, "locations", id));
     await refreshCatalogs();
     setMessage("Location deleted.");
+  };
+
+  const handleStartEditPrice = (location: CatalogLocation) => {
+    if (!location.id) {
+      return;
+    }
+
+    setEditingLocationId(location.id);
+    setEditingPrices({
+      full:
+        typeof location.pricePerPerson?.full === "number"
+          ? String(location.pricePerPerson.full)
+          : "",
+      half:
+        typeof location.pricePerPerson?.half === "number"
+          ? String(location.pricePerPerson.half)
+          : "",
+    });
+    setMessage("");
+  };
+
+  const handleCancelEditPrice = () => {
+    setEditingLocationId(null);
+    setEditingPrices(emptyPriceInputs());
+    setMessage("");
+  };
+
+  const handleSaveEditPrice = async (location: CatalogLocation) => {
+    if (!location.id) {
+      return;
+    }
+
+    setMessage("");
+    const requiredDurations = (location.availableDurations.length
+      ? location.availableDurations
+      : ALL_DURATIONS) as Duration[];
+    const { error, payload } = buildPricePayload(editingPrices, requiredDurations);
+
+    if (error) {
+      setMessage(error);
+      return;
+    }
+
+    await updateDoc(doc(db, "locations", location.id), {
+      pricePerPerson: payload,
+    });
+
+    await refreshCatalogs();
+    setEditingLocationId(null);
+    setEditingPrices(emptyPriceInputs());
+    setMessage("Location price updated.");
   };
 
   return (
@@ -307,9 +437,7 @@ export default function AdminCatalogManager() {
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <div className="space-y-4 rounded-3xl border border-slate-200 bg-white/70 p-5">
-          <h3 className="text-xl font-semibold text-slate-900">
-            Add tour type
-          </h3>
+          <h3 className="text-xl font-semibold text-slate-900">Add tour type</h3>
           <div className="grid gap-3">
             <input
               className={inputClass}
@@ -372,9 +500,7 @@ export default function AdminCatalogManager() {
             {uploadMessage ? (
               <p
                 className={`text-xs ${
-                  uploadStatus === "error"
-                    ? "text-rose-500"
-                    : "text-emerald-600"
+                  uploadStatus === "error" ? "text-rose-500" : "text-emerald-600"
                 }`}
               >
                 {uploadMessage}
@@ -392,6 +518,52 @@ export default function AdminCatalogManager() {
                 }))
               }
             />
+
+            <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-600 sm:grid-cols-2">
+              <label>
+                <p className="mb-2 text-xs uppercase tracking-[0.2em] text-slate-400">
+                  Full day price
+                </p>
+                <input
+                  type="number"
+                  min={0}
+                  className={inputClass}
+                  value={locationForm.pricePerPerson.full}
+                  onChange={(event) =>
+                    setLocationForm((prev) => ({
+                      ...prev,
+                      pricePerPerson: {
+                        ...prev.pricePerPerson,
+                        full: event.target.value,
+                      },
+                    }))
+                  }
+                  placeholder="THB per person"
+                />
+              </label>
+              <label>
+                <p className="mb-2 text-xs uppercase tracking-[0.2em] text-slate-400">
+                  Half day price
+                </p>
+                <input
+                  type="number"
+                  min={0}
+                  className={inputClass}
+                  value={locationForm.pricePerPerson.half}
+                  onChange={(event) =>
+                    setLocationForm((prev) => ({
+                      ...prev,
+                      pricePerPerson: {
+                        ...prev.pricePerPerson,
+                        half: event.target.value,
+                      },
+                    }))
+                  }
+                  placeholder="THB per person"
+                />
+              </label>
+            </div>
+
             <div className="space-y-2 rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-600">
               <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
                 Supported tour types
@@ -418,19 +590,18 @@ export default function AdminCatalogManager() {
                 ))}
               </div>
             </div>
+
             <div className="space-y-2 rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-600">
               <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
                 Supported durations
               </p>
               <div className="flex flex-wrap gap-4">
-                {(["full", "half"] as Duration[]).map((duration) => (
+                {ALL_DURATIONS.map((duration) => (
                   <label key={duration} className="flex items-center gap-2">
                     <input
                       type="checkbox"
                       className="h-4 w-4 rounded border-slate-300 text-emerald-500 focus:ring-emerald-400"
-                      checked={locationForm.availableDurations.includes(
-                        duration,
-                      )}
+                      checked={locationForm.availableDurations.includes(duration)}
                       onChange={(event) => {
                         const checked = event.target.checked;
                         setLocationForm((prev) => ({
@@ -438,7 +609,7 @@ export default function AdminCatalogManager() {
                           availableDurations: checked
                             ? [...prev.availableDurations, duration]
                             : prev.availableDurations.filter(
-                                (value) => value !== duration,
+                                (value) => value !== duration
                               ),
                         }));
                       }}
@@ -448,10 +619,10 @@ export default function AdminCatalogManager() {
                 ))}
               </div>
               <p className="text-xs text-slate-400">
-                If none selected, the location will be available for all
-                durations.
+                If none selected, the location will be available for all durations.
               </p>
             </div>
+
             <button
               type="button"
               onClick={() => handleAddLocation().catch(console.error)}
@@ -465,9 +636,7 @@ export default function AdminCatalogManager() {
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
         <div>
-          <h4 className="text-lg font-semibold text-slate-900">
-            All tour types
-          </h4>
+          <h4 className="text-lg font-semibold text-slate-900">All tour types</h4>
           <div className="mt-4 space-y-3">
             {sortedTourTypes.map((type) => (
               <div
@@ -490,54 +659,124 @@ export default function AdminCatalogManager() {
             ))}
           </div>
         </div>
+
         <div>
-          <h4 className="text-lg font-semibold text-slate-900">
-            All locations
-          </h4>
+          <h4 className="text-lg font-semibold text-slate-900">All locations</h4>
           <div className="mt-4 space-y-3">
-            {sortedLocations.map((location) => (
-              <div
-                key={`${location.id ?? location.nameEn}`}
-                className="flex items-start justify-between gap-4 rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-600"
-              >
-                <div>
-                  <p className="font-semibold text-slate-900">
-                    {location.nameEn}
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    {location.areaEn} • {location.imagePath || "no-image"}
-                  </p>
-                  <p className="mt-2 text-xs text-slate-500">
-                    Durations:{" "}
-                    {(location.availableDurations.length
-                      ? location.availableDurations
-                      : ["full", "half"]
-                    )
-                      .map((value) =>
-                        value === "full" ? "Full day" : "Half day",
-                      )
-                      .join(", ")}
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    Tour types:{" "}
-                    {(location.tourTypeIds.length
-                      ? location.tourTypeIds
-                      : tourTypes.map((type) => type.id)
-                    )
-                      .map((id) => tourTypeMap.get(id)?.labelEn ?? id)
-                      .join(", ")}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleDeleteLocation(location.id)}
-                  disabled={!location.id}
-                  className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-600 transition hover:border-rose-300 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
+            {sortedLocations.map((location) => {
+              const isEditing = editingLocationId === location.id;
+              const fullPrice = location.pricePerPerson?.full;
+              const halfPrice = location.pricePerPerson?.half;
+
+              return (
+                <div
+                  key={`${location.id ?? location.nameEn}`}
+                  className="rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-600"
                 >
-                  Delete
-                </button>
-              </div>
-            ))}
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="font-semibold text-slate-900">{location.nameEn}</p>
+                      <p className="text-xs text-slate-500">
+                        {location.areaEn} • {location.imagePath || "no-image"}
+                      </p>
+                      <p className="mt-2 text-xs text-slate-500">
+                        Durations:{" "}
+                        {(location.availableDurations.length
+                          ? location.availableDurations
+                          : ALL_DURATIONS
+                        )
+                          .map((value) =>
+                            value === "full" ? "Full day" : "Half day"
+                          )
+                          .join(", ")}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        Tour types:{" "}
+                        {(location.tourTypeIds.length
+                          ? location.tourTypeIds
+                          : tourTypes.map((type) => type.id)
+                        )
+                          .map((id) => tourTypeMap.get(id)?.labelEn ?? id)
+                          .join(", ")}
+                      </p>
+                      <p className="mt-2 text-xs text-slate-600">
+                        Prices: Full day {typeof fullPrice === "number" ? formatTHB(fullPrice) : "-"} / Half day {typeof halfPrice === "number" ? formatTHB(halfPrice) : "-"}
+                      </p>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          isEditing
+                            ? handleCancelEditPrice()
+                            : handleStartEditPrice(location)
+                        }
+                        disabled={!location.id}
+                        className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 transition hover:border-emerald-300 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
+                      >
+                        {isEditing ? "Cancel" : "Edit price"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteLocation(location.id)}
+                        disabled={!location.id}
+                        className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-600 transition hover:border-rose-300 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+
+                  {isEditing ? (
+                    <div className="mt-3 grid gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-3 sm:grid-cols-2">
+                      <label>
+                        <p className="mb-1 text-xs uppercase tracking-[0.2em] text-emerald-700">
+                          Full day price
+                        </p>
+                        <input
+                          type="number"
+                          min={0}
+                          className={inputClass}
+                          value={editingPrices.full}
+                          onChange={(event) =>
+                            setEditingPrices((prev) => ({
+                              ...prev,
+                              full: event.target.value,
+                            }))
+                          }
+                        />
+                      </label>
+                      <label>
+                        <p className="mb-1 text-xs uppercase tracking-[0.2em] text-emerald-700">
+                          Half day price
+                        </p>
+                        <input
+                          type="number"
+                          min={0}
+                          className={inputClass}
+                          value={editingPrices.half}
+                          onChange={(event) =>
+                            setEditingPrices((prev) => ({
+                              ...prev,
+                              half: event.target.value,
+                            }))
+                          }
+                        />
+                      </label>
+                      <div className="sm:col-span-2">
+                        <button
+                          type="button"
+                          onClick={() => handleSaveEditPrice(location).catch(console.error)}
+                          className="rounded-full bg-emerald-500 px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-emerald-200 transition hover:bg-emerald-600"
+                        >
+                          Save price
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>

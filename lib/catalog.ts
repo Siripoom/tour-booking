@@ -20,6 +20,7 @@ export type Location = {
   descriptionEn: string;
   tourTypeIds: string[];
   availableDurations: Duration[];
+  pricePerPerson?: Partial<Record<Duration, number>>;
 };
 
 export const TOUR_TYPES: TourType[] = [
@@ -121,6 +122,17 @@ export const DEFAULT_DURATIONS: Duration[] = ["full", "half"];
 type LocationLike = Partial<Location> &
   Pick<Location, "id" | "nameTh" | "nameEn" | "areaTh" | "areaEn" | "imagePath">;
 
+function sanitizePrice(value: unknown): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return null;
+  }
+  const rounded = Math.round(value);
+  if (rounded < 0) {
+    return null;
+  }
+  return rounded;
+}
+
 export function normalizeLocation(
   location: LocationLike,
   allTourTypeIds: string[] = []
@@ -133,6 +145,16 @@ export function normalizeLocation(
     location.availableDurations && location.availableDurations.length
       ? location.availableDurations
       : DEFAULT_DURATIONS;
+  const rawPrices = location.pricePerPerson ?? {};
+  const full = sanitizePrice(rawPrices.full);
+  const half = sanitizePrice(rawPrices.half);
+  const pricePerPerson: Partial<Record<Duration, number>> = {};
+  if (full !== null) {
+    pricePerPerson.full = full;
+  }
+  if (half !== null) {
+    pricePerPerson.half = half;
+  }
 
   return {
     id: location.id,
@@ -146,5 +168,6 @@ export function normalizeLocation(
     descriptionEn: location.descriptionEn ?? "",
     tourTypeIds: tourTypeIds.filter(Boolean),
     availableDurations: availableDurations.filter(Boolean) as Duration[],
+    pricePerPerson,
   };
 }

@@ -16,6 +16,9 @@ export default function PriceSummary({ breakdown }: PriceSummaryProps) {
         <h3 className="text-display mt-2 text-2xl font-semibold text-slate-900">
           Price Summary
         </h3>
+        <p className="mt-1 text-xs text-slate-500">
+          Based on selected location and duration.
+        </p>
       </div>
       <div className="space-y-3 text-sm text-slate-600">
         {breakdown.lines.map((line) => (

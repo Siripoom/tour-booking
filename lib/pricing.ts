@@ -8,6 +8,7 @@ export type Duration = "full" | "half";
 
 export type PricingInput = {
   duration: Duration;
+  basePerPerson: number;
   partySize: number;
   addons: Addons;
 };
@@ -38,7 +39,7 @@ export const ADDON_PRICES = {
 
 export function calculatePrice(input: PricingInput): PriceBreakdown {
   const partySize = Math.max(1, input.partySize || 1);
-  const basePerPerson = BASE_PRICE[input.duration];
+  const basePerPerson = Math.max(0, Math.round(input.basePerPerson || 0));
   const base = basePerPerson * partySize;
   const guide = input.addons.guide ? ADDON_PRICES.guide * partySize : 0;
   const meals = input.addons.meals ? ADDON_PRICES.meals * partySize : 0;
@@ -53,8 +54,8 @@ export function calculatePrice(input: PricingInput): PriceBreakdown {
       {
         labelTh: `${
           input.duration === "full" ? "Full day" : "Half day"
-        } base x ${partySize} pax`,
-        labelEn: `${input.duration === "full" ? "Full day" : "Half day"} base x ${partySize} pax`,
+        } location rate x ${partySize} pax`,
+        labelEn: `${input.duration === "full" ? "Full day" : "Half day"} location rate x ${partySize} pax`,
         amount: base,
       },
       {
